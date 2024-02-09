@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "doodle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/biutthapa/Doodle",
+      "state" : {
+        "branch" : "main",
+        "revision" : "cf3c8bce3d52afcdfa7dd5b4c46310cb8096c807"
+      }
+    }
+  ],
+  "version" : 2
+}
