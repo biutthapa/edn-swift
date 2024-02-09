@@ -1,5 +1,3 @@
-
-
 import Foundation
 import DoodleCore
 
@@ -43,7 +41,7 @@ func rep(_ input: String, _ env: Env) throws -> (output: String, env: Env) {
     return (output: stringOutput, env: env)
 }
 
-func initialReplEnv() -> Env {
+func initialEnv() -> Env {
     return Env(outer: nil)
         .set(data: coreNS
             .reduce(into: [String: Expr]()) { result, pair in
@@ -51,7 +49,7 @@ func initialReplEnv() -> Env {
             })
 }
 
-func initialReplEnv(custom: [String: Lambda]) -> Env {
+func initialEnv(custom: [String: Lambda]) -> Env {
     let data = coreNS.merging(custom) { _, new in
         return new
     }
@@ -287,9 +285,16 @@ func evalAST(_ ast: Expr, _ env: Env) throws -> Expr {
 
 //try myRepl.beginREPL()
 
-public struct DoodleView {
-    public private(set) var text = "Hello, World!"
+//public struct DoodleView {
+//    public private(set) var text = "Hello, World!"
+//
+//    public init() {
+//    }
+//}
 
-    public init() {
-    }
-}
+
+let customNS: [String: Lambda] = [
+    :
+]
+
+let doodleViewNS = initialEnv(custom: customNS)
