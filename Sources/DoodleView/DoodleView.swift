@@ -293,8 +293,5 @@ func evalAST(_ ast: Expr, _ env: Env) throws -> Expr {
 //}
 
 
-let customNS: [String: Lambda] = [
-    :
-]
 
-let doodleViewNS = initialEnv(custom: customNS)
+//let doodleViewNS = initialEnv(custom: customNS)
