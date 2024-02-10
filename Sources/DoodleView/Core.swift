@@ -48,7 +48,7 @@ func rep(_ input: String, _ env: Env) throws -> (output: String, env: Env) {
     return (output: stringOutput, env: env)
 }
 
-func initialEnv() -> Env {
+public func initialEnv() -> Env {
     return Env(outer: nil)
         .set(data: coreNS
             .reduce(into: [String: Expr]()) { result, pair in
@@ -56,7 +56,7 @@ func initialEnv() -> Env {
             })
 }
 
-func initialEnv(custom: [String: Lambda]) -> Env {
+public func initialEnv(custom: [String: Lambda]) -> Env {
     let data = coreNS.merging(custom) { _, new in
         return new
     }
@@ -67,14 +67,6 @@ func initialEnv(custom: [String: Lambda]) -> Env {
                 result[pair.key] = .lambda(pair.value)
             })
 }
-
-
-
-
-
-
-
-
 
 func applyDef(arguments: [Expr], env: Env) throws -> Expr? {
     guard arguments.count == 2 else {
@@ -269,7 +261,7 @@ func evalAST(_ ast: Expr, _ env: Env) throws -> Expr {
 
 // MARK: Namespaces/Lambdas
 
-let viewsNS: [String: ViewLambda] = [
+public let viewsNS: [String: ViewLambda] = [
     "text": { args in
         guard args.count >= 1, case let .string(text) = args[0] else {
             throw ViewError.missingRequiredArgument("Text content is required.")
@@ -288,28 +280,6 @@ let viewsNS: [String: ViewLambda] = [
         return .rectView(color)
     }
 ]
-
-// MARK: Make Views
-import SwiftUI
-import AVKit
-
-@ViewBuilder
-public func makeView(from viewExpr: ViewExpr) -> some View {
-    switch viewExpr {
-    case let .textView(string, modifiers):
-        Text(string)
-            .fontWeight(modifiers.fontWeight)
-            .font(.system(size: modifiers.fontSize ?? 17))
-            .foregroundColor(modifiers.color ?? .primary)
-    case let .rectView(color):
-        Rectangle()
-           .fill(color)
-           .frame(maxWidth: .infinity, maxHeight: .infinity)
-      
-    default:
-        EmptyView()
-    }
-}
 
 // MARK: Types
 public typealias ViewLambda = ([Expr]) throws -> ViewExpr
@@ -333,4 +303,71 @@ enum ViewError: Error {
     case invalidModifierValue(String)
     case custom(String)
 }
+
+
+//// MARK: Make Views
+//public func makeViewExprs(from input: String, env: Env, viewsNS: [String: ViewLambda]) -> [ViewExpr] {
+//    let exprs = READ(input)
+//    var viewExprs: [ViewExpr] = []
+//
+//    let dynamicTextView: ViewExpr = .textView("Dynamic Text", TextModifiers(fontWeight: .bold, fontSize: 24, color: .green, customFontName: nil))
+//    let dynamicRectangle: ViewExpr = .rectView(.blue)
+//    return [dynamicTextView, dynamicRectangle]
+////    return viewExprs
+//}
+
+// MARK: Make Views
+public func makeViewExprs(from input: String, env: Env, viewsNS: [String: ViewLambda]) -> [ViewExpr] {
+    // Parse the input string into expressions
+    let exprs = READ(input)
+    var viewExprs: [ViewExpr] = []
+
+    for expr in exprs {
+        do {
+            // Evaluate each expression in the given environment
+            let evaluatedExpr = try EVAL(expr, env)
+            // Determine if the evaluated expression corresponds to a view type in the view namespace
+            if case let .map(viewProperties) = evaluatedExpr {
+                if let viewTypeExpr = viewProperties[.keyword("ui/type")], case let .keyword(viewType) = viewTypeExpr {
+                    switch viewType {
+                    case "text":
+                        if let textLambda = viewsNS["text"], let viewExpr = try? textLambda(Array(viewProperties.values)) {
+                            viewExprs.append(viewExpr)
+                        }
+                    case "rectangle":
+                        if let rectLambda = viewsNS["rect"], let viewExpr = try? rectLambda(Array(viewProperties.values)) {
+                            viewExprs.append(viewExpr)
+                        }
+                    default:
+                        print("Unsupported view type: \(viewType)")
+                    }
+                }
+            }
+        } catch {
+            print("Error evaluating expression: \(error)")
+        }
+    }
+
+    return viewExprs
+}
+
+
+@ViewBuilder
+public func makeView(from viewExpr: ViewExpr) -> some View {
+    switch viewExpr {
+    case let .textView(string, modifiers):
+        Text(string)
+            .fontWeight(modifiers.fontWeight)
+            .font(.system(size: modifiers.fontSize ?? 17))
+            .foregroundColor(modifiers.color ?? .primary)
+    case let .rectView(color):
+        Rectangle()
+           .fill(color)
+           .frame(maxWidth: .infinity, maxHeight: .infinity)
+      
+    default:
+        EmptyView()
+    }
+}
+
 
