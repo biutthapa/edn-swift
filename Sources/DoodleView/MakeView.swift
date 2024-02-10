@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import AVKit
 
 @ViewBuilder
 public func makeView(from viewExpr: ViewExpr) -> some View {
@@ -16,12 +17,36 @@ public func makeView(from viewExpr: ViewExpr) -> some View {
             .font(.system(size: modifiers.fontSize ?? 17))
             .foregroundColor(modifiers.color ?? .primary)
     case let .rect(color):
-           Rectangle()
-               .fill(color)
-               .frame(maxWidth: .infinity, maxHeight: .infinity)
+        Rectangle()
+           .fill(color)
+           .frame(maxWidth: .infinity, maxHeight: .infinity)
+//    case let .vStack(views):
+//            VStack {
+//                ForEach(views.indices, id: \.self) { index in
+//                    makeView(from: views[index])
+//                }
+//            }
+//    case let .hStack(views):
+//        HStack {
+//            ForEach(views.indices, id: \.self) { index in
+//                makeView(from: views[index])
+//            }
+//        }
+//    case .spacer:
+//            Spacer()
+//    case let .frame(width, height):
+//        Group {
+//            if let width = width, let height = height {
+//                EmptyView().frame(width: width, height: height)
+//            } else if let width = width {
+//                EmptyView().frame(width: width)
+//            } else if let height = height {
+//                EmptyView().frame(height: height)
+//            } else {
+//                EmptyView()
+//            }
+//        }
       
-        
-//
     default:
         EmptyView()
     }
