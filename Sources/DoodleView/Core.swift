@@ -1,6 +1,13 @@
+//
+//  Core.swift
+//
+
+
 import Foundation
 import DoodleCore
+import SwiftUI
 
+// MARK: Reps
 func READ(_ input: String) -> [Expr] {
     if input == "quit" || input == "exit" {
         exit(0)
@@ -62,31 +69,10 @@ func initialEnv(custom: [String: Lambda]) -> Env {
 }
 
 
-public class DoodleREPL {
-    var env: Env
-    
-    public init(env: Env) {
-        self.env = env
-    }
-    
-    func beginREPL() throws {
-        while true {
-            print("user> ", terminator: "")
-            if let input = readLine(strippingNewline: true) {
-                guard input != "" else { continue }
-                do {
-                    let rep = try rep(input, env)
-                    print(rep.output)
-                    env = rep.env
-                } catch {
-                    print(error)
-                }
-            } else {
-                exit(0);
-            }
-        }
-    }
-}
+
+
+
+
 
 
 
@@ -281,17 +267,197 @@ func evalAST(_ ast: Expr, _ env: Env) throws -> Expr {
     }
 }
 
-//let myRepl = DoodleREPL(env: initialReplEnv())
+public class DoodleSession {
+    var inputString: String
+    var env: Env
+    
+    public init(env: Env) {
+        self.env = env
+    }
+    
+    func beginSession() -> View throws {
+        while true {
+            if let input = readLine(strippingNewline: true) {
+                guard input != "" else { continue }
+                do {
+                    let rep = try rep(input, env)
+                    print(rep.output)
+                    env = rep.env
+                } catch {
+                    print(error)
+                }
+            } else {
+                exit(0);
+            }
+        }
+    }
+}
 
-//try myRepl.beginREPL()
+let doodleViewNS = initialEnv(custom: customNS)
+let doodleSession = DoodleSession(env: initialEnv())
 
-//public struct DoodleView {
-//    public private(set) var text = "Hello, World!"
+//try doodleSession.beginSession()
+
+
+
+
+
+// MARK: TYPES
+
+public typealias ColorMap = [String: Color]
+
+
+public protocol ViewExpr {
+    func makeView() -> AnyView
+}
+
+public struct TextViewExpr: ViewExpr {
+    var text: String
+    var modifiers: TextModifiers
+    
+    public func makeView() -> AnyView {
+        AnyView(
+            Text(text)
+                .fontWeight(modifiers.fontWeight)
+                .font(.system(size: modifiers.fontSize ?? 17))
+                .foregroundColor(modifiers.color)
+        )
+    }
+}
+
+public struct RectViewExpr: ViewExpr {
+    var color: Color
+    var size: CGSize
+
+    public func makeView() -> AnyView {
+        AnyView(Rectangle()
+                    .fill(color)
+                    .frame(width: size.width, height: size.height))
+    }
+}
+
+
+public enum ViewError: Error {
+    case typeMismatch(expected: String, found: String)
+    case missingRequiredArgument(String)
+    case unsupportedViewType(String)
+    case invalidModifierValue(String)
+    case custom(String)
+}
+
+public struct TextModifiers {
+    var fontWeight: Font.Weight?
+    var fontSize: CGFloat?
+    var color: Color
+    var customFontName: String?
+}
+
+
+// MARK: Reader
+
+// Note: extending Expr with new case is not allowed.
 //
-//    public init() {
-//    }
-//}
+// Note: use value of ":ui/type" in input map to know which view to use inside evalViewMap.
+//
+let ExampleOfViewMapString = """
+{:ui/type :text
+ :text "The best laid plans"
+ :foreground-style :red}
+"""
+//
+// viewMap is a <#T##[ExprKey : Expr]#> ofcourse.
+
+//public let exampleDynamicTextView: ViewExpressable = .textView("Dynamic Text", TextModifiers(fontWeight: .bold, fontSize: 24, color: .green, customFontName: nil))
+//public let exampleDynamicRectangle: ViewExpressable = .rectView(.blue)
+//
+
+public typealias ViewMakerLambda = ([Expr]) throws -> ViewExpr
+
+func exprMapToTextViewExpr(_ map: [ExprKey: Expr]) throws -> TextViewExpr {
+   throw EvalError.generalError("Not Implemented")
+}
+
+let textLambda: ViewMakerLambda = { args in
+     guard let firstArg = args.first, case .map(let map) = firstArg else {
+        throw EvalError.generalError("Expected a map for 'text' view definition.")
+    }
+    let textViewExpr = try exprMapToTextViewExpr(map)
+    return textViewExpr
+}
+
+let rectLambda: ViewMakerLambda = { args in
+    guard let firstArg = args.first, case .map(let map) = firstArg else {
+        throw EvalError.generalError("Expected a map for 'rect' view definition.")
+    }
+    let rectViewExpr = try exprMapToRectViewExpr(map)
+    return rectViewExpr
+}
+
+func exprMapToRectViewExpr(_ map: [ExprKey: Expr]) throws -> RectViewExpr {
+      throw EvalError.generalError("Not Implemented")
+}
 
 
 
-//let doodleViewNS = initialEnv(custom: customNS)
+public let colorMap: ColorMap = [
+    "red": .red,
+    "blue": .blue,
+    "green": .green,
+]
+
+public func colorFromExprMap(_ map: [ExprKey: Expr]) -> Color {
+    guard case let .string(colorName) = map[.keyword("color")] else { return .black }
+    return colorMap[colorName, default: .black]
+}
+
+
+
+public func readViewMap(_ viewMap: [ExprKey: Expr]) throws -> ViewExpr {
+    guard case let .keyword(uiType) = viewMap[.keyword("ui/type")] else {
+        throw ViewError.custom("Missing or invalid :ui/type in view map.")
+    }
+    switch uiType {
+    case "text":
+        guard case let .string(text) = viewMap[.keyword("text")] else {
+            throw ViewError.missingRequiredArgument("Text content is required for :text type.")
+        }
+        let color = colorFromExprMap(viewMap)
+        let modifiers = TextModifiers(fontWeight: nil, fontSize: 12, color: .black, customFontName: nil)
+        return TextViewExpr(text: text, modifiers: modifiers)
+    case "rectangle":
+        let color = colorFromExprMap(viewMap)
+        return RectViewExpr(color: .blue, size: CGSize(width: 100, height: 100))
+    default:
+        throw ViewError.unsupportedViewType(uiType)
+    }
+}
+
+
+
+public func makeViewExprs(from input: String, env: Env) throws -> [ViewExpr] {
+    let exprs: [Expr] = READ(input)
+    var viewExprs: [ViewExpr] = []
+    
+    for expr in exprs {
+        let evaluatedExpr: Expr = try EVAL(expr, env)
+        if let viewExpr: ViewExpr = try? evaluatedExpr.toViewExpr() {
+            viewExprs.append(viewExpr)
+        } else {
+            throw ViewError.invalidModifierValue("Unable to convert evaluated expression to ViewExpr.")
+        }
+    }
+    
+    return viewExprs
+}
+
+
+public extension Expr {
+    func toViewExpr() throws -> ViewExpr {
+        switch self {
+        case let .map(map):
+            return try readViewMap(map)
+        default:
+            throw ViewError.custom("Unsupported Expr type for conversion to ViewExpr.")
+        }
+    }
+}
