@@ -7,7 +7,65 @@
 
 import SwiftUI
 
-
-func make_view(_ expr: ViewExpr) -> any View {
-    
+@ViewBuilder
+public func makeView(from viewExpr: ViewExpr) -> some View {
+    switch viewExpr {
+    case let .text(string, modifiers):
+        Text(string)
+            .fontWeight(modifiers.fontWeight)
+            .font(.system(size: modifiers.fontSize ?? 17))
+            .foregroundColor(modifiers.color ?? .primary)
+    case let .rect(color):
+           Rectangle()
+               .fill(color)
+               .frame(maxWidth: .infinity, maxHeight: .infinity)
+      
+        
+//
+    default:
+        EmptyView()
+    }
 }
+
+
+
+
+//    case let .image(name, modifiers):
+//        Image(name)
+//            .resizable(resizing: modifiers.resizable)
+//            .frame(width: modifiers.frame?.width, height: modifiers.frame?.height)
+//
+//    case let .button(label, modifiers, viewExprs):
+//        Button(action: modifiers.action) {
+//            Text(label)
+//        }
+//    case let .stack(type, viewExprs, modifiers):
+//        switch type {
+//        case .hStack:
+//            HStack(alignment: modifiers.alignment.vertical, spacing: modifiers.spacing) {
+//                ForEach(viewExprs.indices, id: \.self) { index in
+//                    makeView(from: viewExprs[index])
+//                }
+//            }
+//        case .vStack:
+//            VStack(alignment: modifiers.alignment.horizontal, spacing: modifiers.spacing) {
+//                ForEach(viewExprs.indices, id: \.self) { index in
+//                    makeView(from: viewExprs[index])
+//                }
+//            }
+//        case .zStack:
+//            ZStack(alignment: modifiers.alignment) {
+//                ForEach(viewExprs.indices, id: \.self) { index in
+//                    makeView(from: viewExprs[index])
+//                }
+//            }
+//        }
+//
+//    case let .custom(anyView):
+//        anyView
+
+//extension Image {
+//    func resizable(resizing: Bool) -> some View {
+//        resizing ? resizable() : self
+//    }
+//}

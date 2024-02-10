@@ -234,7 +234,7 @@ func apply(items: [Expr], env: Env) throws -> Expr? {
         return try applyFn(items: items, env: env)
     default:
         return nil
-    }
+    }       
 }
 
 

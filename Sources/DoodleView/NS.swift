@@ -6,9 +6,9 @@
 //
 
 import Foundation
-import DoodleCore
+//import DoodleCore
 
 
-let viewsNS: [String: ViewLambda] = [
-    "defview!" : defview
-]
+//let viewsNS: [String: ViewLambda] = [
+//    "defview!" : defview
+//]
