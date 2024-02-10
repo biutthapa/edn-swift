@@ -2,9 +2,7 @@
 //  Core.swift
 //
 
-
 import Foundation
-import DoodleCore
 import SwiftUI
 
 // MARK: Reps
@@ -27,17 +25,13 @@ func EVAL(_ expr: Expr, _ env: Env) throws -> Expr {
                  return applied
              }
         }
-
         return try evalList(items: items, env: env)
-   
     case .list:
         return expr
-
     default:
         return try evalAST(expr, env)
     }
 }
-
 
 func rep(_ input: String, _ env: Env) throws -> (output: String, env: Env) {
     let exprs = READ(input)
@@ -96,23 +90,18 @@ func applyLet(arguments: [Expr], env: Env) throws -> Expr? {
     default:
         throw EvalError.generalError("The bindings for let must be a vector or a list.")
     }
-
     guard bindings.count % 2 == 0 else {
         throw EvalError.generalError("The bindings for let supposed be in piars.")
     }
-
     guard let expression = arguments.rest().first() else {
         throw EvalError.generalError("The expression for let is not valid.")
     }
-    
     let innerEnv = Env(outer: env)
     let bindingDictionairy = try bindings.toDictionary()
-    
     for binding in bindingDictionairy {
         let evaluatedVal = try EVAL(binding.value, innerEnv)
         let _ = innerEnv.set(symbol: binding.key, value: evaluatedVal)
     }
-    
     return try EVAL(expression, innerEnv)
 }
 
@@ -131,7 +120,6 @@ func applyIf(arguments: [Expr], env: Env) throws -> Expr? {
         throw EvalError.generalError("if true expression is invalid")
     }
     let ifFalseExpr = arguments.rest().rest().first()
-    
     let evaluatedPredicate = try EVAL(predicate, env)
     switch evaluatedPredicate {
     case .boolean(false), .nil:
@@ -179,13 +167,10 @@ func applyFn(items: [Expr], env: Env) throws -> Expr? {
         
         let lambdaBinds: [String: Expr] = Dictionary.buildFrom(keys: lambdaArgKeys,
                                                                values: lambdaArgValues)
-        
         let closureEnv = Env(outer: env, binds: lambdaBinds)
-        
         guard let evaluatedLambdaValue = try lambdaBody.map({ try EVAL($0, closureEnv) }).last() else {
             throw EvalError.generalError("Something wrong whaile evaluating lambda body")
         }
-        
         return evaluatedLambdaValue
     }
     
@@ -196,9 +181,7 @@ func apply(items: [Expr], env: Env) throws -> Expr? {
     guard case .symbol(let symbol) = items.first() else {
         throw EvalError.generalError("First item in apply invalid")
     }
-    
     let arguments = items.rest()
-    
     switch symbol {
     case "def!":
         return try applyDef(arguments: arguments, env: env)
@@ -260,8 +243,7 @@ func evalAST(_ ast: Expr, _ env: Env) throws -> Expr {
 }
 
 // MARK: Namespaces/Lambdas
-
-public let viewsNS: [String: ViewLambda] = [
+public let viewsNS: [String: Lambda] = [
     "text": { args in
         guard args.count >= 1, case let .string(text) = args[0] else {
             throw ViewError.missingRequiredArgument("Text content is required.")
@@ -273,101 +255,158 @@ public let viewsNS: [String: ViewLambda] = [
             color: nil,
             customFontName: nil
         )
-        return .textView(text, modifiers)
+        return .view(.text(text, modifiers))
     },
     "rect": { args in
-        let color: Color = .black // Placeholder, should implement actual logic
-        return .rectView(color)
+        guard args.count >= 1, let properties = args.first, case .map(let propertiesMap) = properties else {
+            throw ViewError.missingRequiredArgument("Property map is required for rectangle.")
+        }
+        
+        // Extract color
+        let color = propertiesMap[.keyword("color")].flatMap { colorFromString($0) } ?? .black
+
+        // Extract size
+        let size: CGSize = propertiesMap[.keyword("size")].flatMap { sizeExpr in
+            guard case .map(let sizeMap) = sizeExpr,
+                  let widthExpr = sizeMap[.keyword("width")], case .number(let width) = widthExpr,
+                  let heightExpr = sizeMap[.keyword("height")], case .number(let height) = heightExpr else {
+                return CGSize(width: 100, height: 100) // Default size if not specified
+            }
+            return CGSize(width: width, height: height)
+        } ?? CGSize(width: 100, height: 100) // Default size if size key is missing
+
+        return .view(.rect(color, size))
     }
+
 ]
 
-// MARK: Types
-public typealias ViewLambda = ([Expr]) throws -> ViewExpr
-
-public enum ViewExpr {
-    case textView(String, TextModifiers)
-    case rectView(Color)
-}
-
-public typealias TextModifiers = (
-    fontWeight: Font.Weight?,
-    fontSize: CGFloat?,
-    color: Color?,
-    customFontName: String?
-)
-
-enum ViewError: Error {
-    case typeMismatch(expected: String, found: String)
-    case missingRequiredArgument(String)
-    case unsupportedViewType(String)
-    case invalidModifierValue(String)
-    case custom(String)
-}
-
-
-//// MARK: Make Views
-//public func makeViewExprs(from input: String, env: Env, viewsNS: [String: ViewLambda]) -> [ViewExpr] {
-//    let exprs = READ(input)
-//    var viewExprs: [ViewExpr] = []
-//
-//    let dynamicTextView: ViewExpr = .textView("Dynamic Text", TextModifiers(fontWeight: .bold, fontSize: 24, color: .green, customFontName: nil))
-//    let dynamicRectangle: ViewExpr = .rectView(.blue)
-//    return [dynamicTextView, dynamicRectangle]
-////    return viewExprs
-//}
 
 // MARK: Make Views
-public func makeViewExprs(from input: String, env: Env, viewsNS: [String: ViewLambda]) -> [ViewExpr] {
-    // Parse the input string into expressions
+public func readViewExprs(from input: String, env: Env) -> [Expr.ViewExpr] {
     let exprs = READ(input)
-    var viewExprs: [ViewExpr] = []
+    var viewExprs: [Expr.ViewExpr] = []
 
     for expr in exprs {
+        // Check if this is a definition; skip transforming into a view expression
+        if case .list(let items) = expr, items.first == .symbol("def!") {
+            // Evaluate the definition to update the environment but do not add to view expressions
+            _ = try? EVAL(expr, env)
+            continue
+        }
+        
+        // For non-definition expressions, evaluate and attempt to transform into view expressions
         do {
-            // Evaluate each expression in the given environment
             let evaluatedExpr = try EVAL(expr, env)
-            // Determine if the evaluated expression corresponds to a view type in the view namespace
-            if case let .map(viewProperties) = evaluatedExpr {
-                if let viewTypeExpr = viewProperties[.keyword("ui/type")], case let .keyword(viewType) = viewTypeExpr {
-                    switch viewType {
-                    case "text":
-                        if let textLambda = viewsNS["text"], let viewExpr = try? textLambda(Array(viewProperties.values)) {
-                            viewExprs.append(viewExpr)
-                        }
-                    case "rectangle":
-                        if let rectLambda = viewsNS["rect"], let viewExpr = try? rectLambda(Array(viewProperties.values)) {
-                            viewExprs.append(viewExpr)
-                        }
-                    default:
-                        print("Unsupported view type: \(viewType)")
-                    }
-                }
+            if let viewExpr = transformToViewExpr(evaluatedExpr) {
+                viewExprs.append(viewExpr)
             }
         } catch {
-            print("Error evaluating expression: \(error)")
+            print("Error evaluating expression for view: \(error)")
         }
     }
-
     return viewExprs
 }
 
 
-@ViewBuilder
-public func makeView(from viewExpr: ViewExpr) -> some View {
-    switch viewExpr {
-    case let .textView(string, modifiers):
-        Text(string)
-            .fontWeight(modifiers.fontWeight)
-            .font(.system(size: modifiers.fontSize ?? 17))
-            .foregroundColor(modifiers.color ?? .primary)
-    case let .rectView(color):
-        Rectangle()
-           .fill(color)
-           .frame(maxWidth: .infinity, maxHeight: .infinity)
-      
+private func transformToViewExpr(_ expr: Expr) -> Expr.ViewExpr? {
+    switch expr {
+    case .map(let properties):
+        guard let typeExpr = properties[.keyword("ui/type")], case let .keyword(type) = typeExpr else {
+            return nil
+        }
+        switch type {
+        case "text":
+            if let text = properties[.keyword("text")], case let .string(content) = text {
+                let modifiers = extractTextModifiers(from: properties)
+                return .text(content, modifiers)
+            }
+        case "rectangle":
+            let modifiers = extractRectModifiers(from: properties)
+            if let color = modifiers.color {
+                let size = modifiers.size ?? CGSize(width: 100, height: 100)
+                return .rect(color, size)
+            }
+        default:
+            print("Unsupported view type: \(type)")
+        }
     default:
-        EmptyView()
+        return nil
+    }
+    return nil
+}
+
+
+private func extractTextModifiers(from properties: [ExprKey: Expr]) -> TextModifiers {
+    let fontWeight = properties[.keyword("fontWeight")].flatMap { fontWeightString(from: $0) }
+    let fontSize = properties[.keyword("fontSize")].flatMap { if case let .number(value) = $0 { return CGFloat(value) } else { return nil } }
+    let color = properties[.keyword("foreground-color")].flatMap { colorFromString($0) }
+    let customFontName = properties[.keyword("customFontName")].flatMap { if case let .string(value) = $0 { return value } else { return nil } }
+    
+    return (fontWeight, fontSize, color, customFontName)
+}
+
+private func extractRectModifiers(from properties: [ExprKey: Expr]) -> RectModifiers {
+    let color = properties[.keyword("color")].flatMap { colorFromString($0) }
+    let size: CGSize? = properties[.keyword("size")].flatMap { sizeExpr in
+        guard case .map(let sizeMap) = sizeExpr,
+              let widthExpr = sizeMap[.keyword("width")], case .number(let width) = widthExpr,
+              let heightExpr = sizeMap[.keyword("height")], case .number(let height) = heightExpr else {
+            return nil
+        }
+        return CGSize(width: width, height: height)
+    }
+    
+    return (color: color, size: size)
+}
+
+
+
+
+private func fontWeightString(from expr: Expr) -> Font.Weight? {
+    guard case let .string(value) = expr else { return nil }
+    switch value.lowercased() {
+    case "ultralight": return .ultraLight
+    case "thin": return .thin
+    case "light": return .light
+    case "regular": return .regular
+    case "medium": return .medium
+    case "semibold": return .semibold
+    case "bold": return .bold
+    case "heavy": return .heavy
+    case "black": return .black
+    default: return nil
+    }
+}
+
+private func colorFromString(_ expr: Expr) -> Color? {
+    switch expr {
+    case .keyword(let colorName):
+        switch colorName {
+        case "red": return .red
+        case "blue": return .blue
+        case "green": return .green
+        case "black": return .black
+        case "yellow": return .yellow
+        case "white": return .white
+        default: return nil
+        }
+    default:
+        return nil
     }
 }
 
 
+@ViewBuilder
+public func makeView(from viewExpr: Expr.ViewExpr) -> some View {
+    switch viewExpr {
+    case let .text(string, modifiers):
+        Text(string)
+            .fontWeight(modifiers.fontWeight)
+            .font(.custom(modifiers.customFontName ?? "System", size: modifiers.fontSize ?? 17))
+            .foregroundColor(modifiers.color ?? .primary)
+    case let .rect(color, size):
+        Rectangle()
+            .fill(color)
+            .frame(width: size.width, height: size.height)
+    }
+}
