@@ -11,12 +11,12 @@ import AVKit
 @ViewBuilder
 public func makeView(from viewExpr: ViewExpr) -> some View {
     switch viewExpr {
-    case let .text(string, modifiers):
+    case let .textView(string, modifiers):
         Text(string)
             .fontWeight(modifiers.fontWeight)
             .font(.system(size: modifiers.fontSize ?? 17))
             .foregroundColor(modifiers.color ?? .primary)
-    case let .rect(color):
+    case let .rectView(color):
         Rectangle()
            .fill(color)
            .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -6,23 +6,20 @@
 //
 
 import Foundation
+import DoodleCore
 import SwiftUI
 
-public typealias ViewLambda = ([ViewExpr]) throws -> ViewExpr
+public typealias ViewLambda = ([Expr]) throws -> ViewExpr
 
 public enum ViewExpr {
-    case text(String, TextModifiers)
-    case rect(Color)
-//    case vStack([ViewExpr])
-//    case hStack([ViewExpr])
-//    case zStack([ViewExpr])
-//    case linearGradient(Gradient, startPoint: UnitPoint, endPoint: UnitPoint)
-//    case spacer
-//    case frame(width: CGFloat?, height: CGFloat?)
-//    case opacity(Double)
-//    case scaleEffect(CGFloat)
-//    case shadow(color: Color, radius: CGFloat, x: CGFloat, y: CGFloat)
-//    case avPlayerView(AVPlayer)
+    case textView(String, TextModifiers)
+    case rectView(Color)
+    
+    
+    //    case stack(StackType, [ViewExpr], StackModifiers)
+//    public enum StackType {
+//        case hStack, vStack, zStack
+//    }
 
 }
 
@@ -34,14 +31,32 @@ public typealias TextModifiers = (
 //    gradient: Gradient?
 )
 
+enum ViewError: Error {
+    case typeMismatch(expected: String, found: String)
+    case missingRequiredArgument(String)
+    case unsupportedViewType(String)
+    case invalidModifierValue(String)
+    case custom(String)
+}
+
 
 
 
 
 //    case image(String, ImageModifiers)
 //    case button(String, ButtonModifiers, [ViewExpr])
-//    case stack(StackType, [ViewExpr], StackModifiers)
 //    case custom(AnyView)
+
+//    case vStack([ViewExpr])
+//    case hStack([ViewExpr])
+//    case zStack([ViewExpr])
+//    case linearGradient(Gradient, startPoint: UnitPoint, endPoint: UnitPoint)
+//    case spacer
+//    case frame(width: CGFloat?, height: CGFloat?)
+//    case opacity(Double)
+//    case scaleEffect(CGFloat)
+//    case shadow(color: Color, radius: CGFloat, x: CGFloat, y: CGFloat)
+//    case avPlayerView(AVPlayer)
 
 
 
@@ -64,15 +79,6 @@ public typealias TextModifiers = (
 //    }
 //
 //
-//    public enum StackType {
-//        case hStack, vStack, zStack
-//    }
 
 
-enum ViewError: Error {
-    case typeMismatch(expected: String, found: String)
-    case missingRequiredArgument(String)
-    case unsupportedViewType(String)
-    case invalidModifierValue(String)
-    case custom(String)
-}
+
