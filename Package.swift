@@ -24,7 +24,7 @@ let package = Package(
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
             name: "DoodleView",
-            dependencies: [.product(name: "DoodleCore", package: "doodle")]),
+            dependencies: [.product(name: "DoodleCore", package: "doodle-core")]),
         .testTarget(
             name: "DoodleViewTests",
             dependencies: ["DoodleView"]),
