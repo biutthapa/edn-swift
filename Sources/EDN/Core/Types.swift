@@ -9,7 +9,6 @@ import Foundation
 import SwiftUI
 
 public typealias Lambda = ([Expr]) throws -> Expr
-public typealias ViewLambda = ([Expr]) throws -> any View
 public typealias Number = Double
 
 public enum ExprKey: Hashable {
@@ -37,36 +36,7 @@ public enum Expr {
     indirect case vector([Expr])
     indirect case map([ExprKey: Expr])
     indirect case lambda(Lambda)
-    case view(ViewExpr)
-    
-    public enum ViewExpr {
-        case text(String, TextModifiers)
-        case rect(Color, CGSize)
-    }
-    
 }
-
-public typealias TextModifiers = (
-    fontWeight: Font.Weight?,
-    fontSize: CGFloat?,
-    color: Color?,
-    customFontName: String?
-)
-
-public typealias RectModifiers = (
-    color: Color?,
-    size: CGSize?
-)
-
-
-enum ViewError: Error {
-    case typeMismatch(expected: String, found: String)
-    case missingRequiredArgument(String)
-    case unsupportedViewType(String)
-    case invalidModifierValue(String)
-    case custom(String)
-}
-
 
 
 public enum DataError: Error {

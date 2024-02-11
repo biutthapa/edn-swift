@@ -1,11 +1,11 @@
 import XCTest
-@testable import DoodleView
+@testable import EDN
 
-final class DoodleViewTests: XCTestCase {
+final class EDNTests: XCTestCase {
     func testExample() throws {
         // This is an example of a functional test case.
         // Use XCTAssert and related functions to verify your tests produce the correct
         // results.
-        XCTAssertEqual(DoodleView().text, "Hello, World!")
+        XCTAssertEqual(EDN().text, "Hello, World!")
     }
 }

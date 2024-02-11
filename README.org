@@ -1,0 +1,46 @@
+* Dynamic Swift
+
+*Dynamically Typed Swift, Built on Regular Swift.*
+
+/(Work in Progress, Not Ready for Production)/
+
+** *The Main Ideas:*
+*** Versatile Arrays
+Support arrays with variadic arguments of mixed types, enabling the creation of flexible and dynamically typed collections.
+#+begin_src swift
+let diverseArray = [1, "two", 3.5, (name: "Alex", age: 29)]
+#+end_src
+*** HashMap DataStructure on Named-Tuple Syntax
+#+begin_src swift
+let person = (name: "Jordan", age: 35,
+              interests: ["Hiking", "Photography"])
+#+end_src
+*** Function definations with Dynamic Type-Handling
+#+begin_src swift
+func printArrayElements(array) {
+    for element in array {
+        switch element {
+        case let int as Int:
+            print("Int: \(int)")
+        case let str as String:
+            print("String: \(str)")
+        case let tuple as (name: String, age: Int):
+            print("Person: \(tuple.name), Age: \(tuple.age)")
+        default:
+            print("Unknown Type")
+        }
+    }
+}
+
+#+end_src
+*** Function definations with Variadic Parameters
+Accept an indefinite number of arguments
+#+begin_src swift
+func combineElements(args...) {
+    var combinedString = ""
+    for arg in args {
+        combinedString += "\(arg) "
+    }
+    print(combinedString)
+}
+#+end_src
